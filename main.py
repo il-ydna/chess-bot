@@ -17,10 +17,20 @@ gboard[7, 3], gboard[7, 4] = 5, 6
 gboard[1] = -1
 gboard[0] = -gboard[7]
 
+test_board = np.array([
+    [-4, -2, -3, -5, -6, -3, -2, -4],
+    [-1, -1, -1, -1, -1, -1, -1, -1],
+    [ 0,  0,  0,  0,  0,  0,  0,  0],
+    [ 0,  0,  0,  0,  0,  0,  0,  0],
+    [ 0,  0,  0,  0,  0,  0,  0,  0],
+    [ 0,  0,  0,  0,  0,  0,  0,  0],
+    [ 1,  1,  1,  1,  1,  1,  1,  1],
+    [ 4,  0,  0,  0,  6,  3,  2,  4]
+])
 untouched = (gboard != 0).astype(int)
-
-
-
+untouched[7, 1:4] = 0
+print(untouched)
+print(test_board)
 
 
 # print(f"pawn moves:   {get_possible_moves(gboard, (1,0))}")
@@ -31,11 +41,11 @@ untouched = (gboard != 0).astype(int)
 # print(f"king moves:   {get_possible_moves(gboard, (0,4))}")
 
 print("WHITE MOVES: ")
-w_m = poll_all_whites(gboard, untouched)
+w_m = poll_all_whites(test_board, untouched)
 print("BLACK MOVES: ")
-b_m = poll_all_blacks(gboard, untouched)
+b_m = poll_all_blacks(test_board, untouched)
 print(w_m)
 print(b_m)
 
-filter_special_conditions(gboard, w_m, b_m, untouched)
+filter_special_conditions(test_board, w_m, b_m, untouched)
 

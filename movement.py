@@ -3,6 +3,7 @@ import numpy as np
 
 pieces = {1: "pawn", 2: "knight", 3: "bishop", 4: "rook", 5: "queen", 6: "king", 7: "2pawn"}
 
+
 def get_possible_moves(board: np.ndarray, position: (int, int), ut_pieces: np.ndarray) -> list[tuple[int, int]]:
     untouched = ut_pieces[position]
 
@@ -39,6 +40,15 @@ def get_possible_moves(board: np.ndarray, position: (int, int), ut_pieces: np.nd
         if move_in_bounds(*l_diag) and move_on_opponent(piece_type, *l_diag):
             possible_moves.append(l_diag)
         if move_in_bounds(*r_diag) and move_on_opponent(piece_type, *r_diag):
+            possible_moves.append(r_diag)
+        # en passant
+        l_side = (curr_r, curr_c - 1)
+        r_side = (curr_r, curr_c + 1)
+        if move_in_bounds(*l_diag) and move_on_opponent(piece_type, *l_side) and board[l_side] == (-7 * piece_type):
+            l_diag[0] += 8*piece_type
+            possible_moves.append(l_diag)
+        if move_in_bounds(*r_diag) and move_on_opponent(piece_type, *r_side) and board[r_side] == (-7 * piece_type):
+            r_diag[0] += 8*piece_type
             possible_moves.append(r_diag)
 
     # knight
@@ -124,10 +134,25 @@ def get_possible_moves(board: np.ndarray, position: (int, int), ut_pieces: np.nd
 
 
 def execute_move(board, mov_from, mov_to):
-    # castling handler
-    if (abs(mov_from[0]) == 8):
-        print("castle available! wow")
-    board[mov_to] = board[mov_from]
+    piece_type = board[mov_from]
+    # TODO: castling handler
+
+    # en passant handler
+    # if the move is an en passant, execute it
+    if abs(mov_from[0]) > 7:
+        board[mov_from[0] - 8, mov_to[1]] = 0
+
+    # revert the 2pawn (if any) back to a 1pawn
+    board[board == 7] = 1
+    board[board == -7] = -1
+
+    if abs(piece_type) == 1:
+        # if a pawn moved two rows
+        if abs(mov_from[1] - mov_to[1]) == 2:
+            # convert it to the special 2pawn
+            board[mov_to] = 7
+    else:
+        board[mov_to] = board[mov_from]
     board[mov_from] = 0
 
 
@@ -182,15 +207,16 @@ def filter_special_conditions(board, w_moves, b_moves, ut_pieces):
     # +/-8 will represent castle scenarios
     # +1 means right castle, -1 means left castle
     # white castle
-    if check_for_check(board, ut_pieces, True):
+    if not check_for_check(board, ut_pieces, True):
         # if the king's untouched
         if ut_pieces[7,4] != 0:
             # check left
             if ut_pieces[7,0] != 0 and np.all(board[7, 1:4] == 0):
-                w_moves.append((8, -1), (0,0))
+                w_moves.append(((8, -1), (0, 0)))
             # check right
             if ut_pieces[7,7] != 0 and np.all(board[7, 5:8] == 0):
-                w_moves.append((8, 1), (0,0))
+                w_moves.append(((8, 1), (0, 0)))
+
 
     # black castle
     if check_for_check(board, ut_pieces, False):
