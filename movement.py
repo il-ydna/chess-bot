@@ -13,9 +13,6 @@ def get_possible_moves(board: np.ndarray, position: (int, int), ut_pieces: np.nd
     def move_on_teammate(p_type, d_r, d_c):
         return p_type * board[d_r, d_c] > 0
 
-    def move_to_empty(p_type, d_r, d_c):
-        return p_type * board[d_r, d_c] != 0
-
     def move_in_bounds(d_r, d_c):
         return (0 <= d_r <= 7) and (0 <= d_c <= 7)
     # each tuple represents a direction. useful for implementing movement
@@ -29,14 +26,15 @@ def get_possible_moves(board: np.ndarray, position: (int, int), ut_pieces: np.nd
     # pawn
     if abs(piece_type) == 1:
         # general one-step move
-        possible_moves.append((curr_r - int(piece_type), curr_c))
+        if board[curr_r - int(piece_type), curr_c] == 0:
+            possible_moves.append((curr_r - int(piece_type), curr_c))
         # two-step move
-        if untouched:
+        if untouched and move_in_bounds(curr_r - int(2 * piece_type), curr_c):
             possible_moves.append((curr_r - int(2 * piece_type), curr_c))
 
         # diagonal capture
-        l_diag = (curr_r - piece_type, curr_c - 1)
-        r_diag = (curr_r - piece_type, curr_c + 1)
+        l_diag = (int(curr_r - piece_type), curr_c - 1)
+        r_diag = (int(curr_r - piece_type), curr_c + 1)
         if move_in_bounds(*l_diag) and move_on_opponent(piece_type, *l_diag):
             possible_moves.append(l_diag)
         if move_in_bounds(*r_diag) and move_on_opponent(piece_type, *r_diag):
@@ -44,12 +42,11 @@ def get_possible_moves(board: np.ndarray, position: (int, int), ut_pieces: np.nd
         # en passant
         l_side = (curr_r, curr_c - 1)
         r_side = (curr_r, curr_c + 1)
-        if move_in_bounds(*l_diag) and move_on_opponent(piece_type, *l_side) and board[l_side] == (-7 * piece_type):
-            l_diag[0] += 8*piece_type
-            possible_moves.append(l_diag)
+        if move_in_bounds(*l_diag) and board[l_side] == (-7 * piece_type):
+            possible_moves.append((int(l_diag[0] + 8*piece_type), l_diag[1]))
         if move_in_bounds(*r_diag) and move_on_opponent(piece_type, *r_side) and board[r_side] == (-7 * piece_type):
             r_diag[0] += 8*piece_type
-            possible_moves.append(r_diag)
+            possible_moves.append((int(r_diag[0] + 8*piece_type), r_diag[1]))
 
     # knight
     if abs(piece_type) == 2:
@@ -146,11 +143,10 @@ def execute_move(board, mov_from, mov_to):
     board[board == 7] = 1
     board[board == -7] = -1
 
-    if abs(piece_type) == 1:
+    if abs(piece_type) == 1 and abs(mov_from[0] - mov_to[0]) == 2:
         # if a pawn moved two rows
-        if abs(mov_from[1] - mov_to[1]) == 2:
-            # convert it to the special 2pawn
-            board[mov_to] = 7
+        # convert it to the special 2pawn
+        board[mov_to] = 7 * piece_type
     else:
         board[mov_to] = board[mov_from]
     board[mov_from] = 0
@@ -212,10 +208,10 @@ def filter_special_conditions(board, w_moves, b_moves, ut_pieces):
         if ut_pieces[7,4] != 0:
             # check left
             if ut_pieces[7,0] != 0 and np.all(board[7, 1:4] == 0):
-                w_moves.append(((8, -1), (0, 0)))
+                w_moves.append(((8, -1), (0, 0), (0, 0), (0, 0)))
             # check right
             if ut_pieces[7,7] != 0 and np.all(board[7, 5:8] == 0):
-                w_moves.append(((8, 1), (0, 0)))
+                w_moves.append(((8, 1), (0, 0), (0, 0), (0, 0)))
 
 
     # black castle
@@ -224,10 +220,10 @@ def filter_special_conditions(board, w_moves, b_moves, ut_pieces):
         if ut_pieces[0, 4] != 0:
             # check left
             if ut_pieces[0, 0] != 0 and np.all(board[0, 1:4] == 0):
-                b_moves.append((-8, -1), (0, 0))
+                b_moves.append((-8, -1), (0, 0), ((0, 0), (0, 0)))
             # check right
             if ut_pieces[0, 7] != 0 and np.all(board[0, 5:8] == 0):
-                b_moves.append((-8, 1), (0, 0))
+                b_moves.append((-8, 1), (0, 0), ((0, 0), (0, 0)))
 
     print(w_moves)
     print(b_moves)
@@ -239,9 +235,9 @@ def poll_all_whites(board: np.ndarray, ut_pieces: np.ndarray):
     for p in w_pieces:
         p_moves = get_possible_moves(board, tuple(p), ut_pieces)
         # print(f"{pieces[board[tuple(p)]]} from {tuple(p)}, to {p_moves}")
-        # appends (from, to) coordinates
-        for move in p_moves:
-            white_moves.extend((tuple(p), move))
+        # appends (from, to) coordinate
+        print(p_moves)
+    print(white_moves)
     return white_moves
 
 
@@ -251,8 +247,7 @@ def poll_all_blacks(board: np.ndarray, ut_pieces: np.ndarray):
     for p in b_pieces:
         p_moves = get_possible_moves(board, tuple(p), ut_pieces)
         # print(f"{pieces[-board[tuple(p)]]} from {tuple(p)}, to {p_moves}")
-        for move in p_moves:
-            black_moves.extend((tuple(p), move))
+        black_moves.extend(p_moves)
     return black_moves
 
 
