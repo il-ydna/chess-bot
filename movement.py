@@ -1,7 +1,8 @@
 import numpy as np
 
-
 pieces = {1: "pawn", 2: "knight", 3: "bishop", 4: "rook", 5: "queen", 6: "king", 7: "2pawn"}
+corners = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+sides = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 
 
 def get_possible_moves(board: np.ndarray, position: (int, int), ut_pieces: np.ndarray) -> list[tuple[int, int]]:
@@ -24,6 +25,7 @@ def get_possible_moves(board: np.ndarray, position: (int, int), ut_pieces: np.nd
     piece_type = board[position]
     possible_moves = []
     # pawn
+
     if abs(piece_type) == 1:
         # general one-step move
         if board[curr_r - int(piece_type), curr_c] == 0:
