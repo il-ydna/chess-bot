@@ -16,9 +16,12 @@ from game import *
 # print(test_board)
 
 game = Game()
+game.poll_whites()
 game.poll_blacks()
-print(game.black_moves)
-print(game.white_moves)
+print(game.board)
+print("white moves: \n", game.white_moves)
+print("black moves: \n", game.black_moves)
+
 
 
 
