@@ -1,94 +1,15 @@
 from game import *
 
+test_mate_board = np.zeros((8, 8), dtype=int)
+test_mate_board[1, 1] = -6
+test_mate_board[6, 6] = -5
+test_mate_board[5, 5] = -1
+test_mate_board[7, 7] = 6
+
+test_game = Game(board=test_mate_board)
+test_game.sim_game()
 
 
-
-# test_board = np.zeros((8, 8))
-# test_board[2, 0] = -1
-# test_board[2, 1] = 7
-#
-#
-# test_board[0, 6] = -6
-# test_board[7, 7] = 6
-# untouched = (test_board != 0).astype(int)
-# untouched[7, 1:4] = 0
-# print(untouched)
-# print(test_board)
-
-
-# print(game.board)
-
-# game.execute_move()
-# print("white moves: \n", game.white_moves)
-# print("black moves: \n", game.black_moves)
-# print(game.board)
-for i in range(100):
+for i in range(5):
     game = Game(seed=i)
     game.sim_game()
-    # print(game.board)
-# game.execute_move()
-# print(game.board)
-
-
-
-
-
-# gboard = np.zeros(shape=(8, 8), dtype=int)
-# print(gboard)
-#
-# # piece guide:
-# pieces = {1: "pawn", 2: "knight", 3: "bishop", 4: "rook", 5: "queen", 6: "king", 7: "2pawn"}
-#
-# # init white pieces
-# gboard[6] = 1
-# gboard[7, 1], gboard[7, 6] = 2, 2
-# gboard[7, 2], gboard[7, 5] = 3, 3
-# gboard[7, 0], gboard[7, 7] = 4, 4
-# gboard[7, 3], gboard[7, 4] = 5, 6
-# # init black pieces
-# gboard[1] = -1
-# gboard[0] = -gboard[7]
-#
-# # test_board = np.array([
-# #     [-4, -2, -3, -5, -6, -3, -2, -4],
-# #     [-1, -1, -1, -1, -1, -1, -1, -1],
-# #     [ 0,  0,  0,  0,  0,  0,  0,  0],
-# #     [ 0,  0,  0,  0,  0,  0,  0,  0],
-# #     [ 0,  0,  0,  0,  0,  0,  0,  0],
-# #     [ 0,  0,  0,  0,  0,  0,  0,  0],
-# #     [ 1,  1,  1,  1,  1,  1,  1,  1],
-# #     [ 4,  0,  0,  0,  6,  3,  2,  4]
-# # ])
-# test_board = np.zeros((8, 8))
-# test_board[0, 0] = -1
-# test_board[2, 1] = 1
-#
-#
-# test_board[0, 6] = -6
-# test_board[7, 7] = 6
-# untouched = (gboard != 0).astype(int)
-# untouched[7, 1:4] = 0
-# print(untouched)
-# print(test_board)
-#
-# execute_move(test_board, (0, 0), (2, 0))
-#
-# print(test_board)
-#
-# # print(f"pawn moves:   {get_possible_moves(gboard, (1,0))}")
-# # print(f"knight moves: {get_possible_moves(gboard, (0,1))}")
-# # print(f"bishop moves: {get_possible_moves(gboard, (0,2))}")
-# # print(f"rook moves:   {get_possible_moves(gboard, (0,0))}")
-# # print(f"queen moves:  {get_possible_moves(gboard, (0,3))}")
-# # print(f"king moves:   {get_possible_moves(gboard, (0,4))}")
-#
-# print("WHITE MOVES: ")
-# w_m = poll_all_whites(test_board, untouched)
-# print("BLACK MOVES: ")
-# # b_m = poll_all_blacks(test_board, untouched)
-# # print(w_m[0])
-# # print(b_m)
-#
-# # filter_special_conditions(test_board, w_m, b_m, untouched)
-#
-# #TODO: make a game class to make this all simpler

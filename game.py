@@ -13,13 +13,14 @@ def measure_runtime(func):
         elapsed_time_ms = (end_time - start_time) * 1000
         print(f"{elapsed_time_ms:.4f} ms")
         return result
+
     return wrapper
 
 
 pieces = {1: "pawn  ", 2: "knight", 3: "bishop", 4: "rook  ",
-          5: "queen ", 6: "king  ", 7: "2pawn ", 8: "leppawn",
-          9: "reppawn", 10: "pawntoknight", 11: "pawntobish",
-          12: "pawntorook", 13: "pawntoqueen"}
+          5: "queen ", 6: "king  ", 7: "2pawn ", 8: "l_ep_pawn",
+          9: "r_ep_pawn", 10: "pawn_to_knight", 11: "pawn_to_bish",
+          12: "pawn_to_rook", 13: "pawn_to_queen"}
 corners = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
 sides = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 
@@ -34,18 +35,13 @@ default_board[7, 3], default_board[7, 4] = 5, 6
 default_board[1] = -1
 default_board[0] = -default_board[7]
 
-test_mate_board = np.zeros((8, 8), dtype=int)
-test_mate_board[1, 1] = -6
-test_mate_board[6, 6] = -5
-test_mate_board[5, 5] = -1
-test_mate_board[7, 7] = 6
-
 
 class Game:
+    # piece class is used to more cleanly code movement
     class Piece:
         def __init__(self, board, position, untouched):
             self.ptype = abs(int(board[position]))
-            self.side = self.ptype/int(board[position])
+            self.side = self.ptype / int(board[position])
             self.position = position
             self.untouched = untouched[position]
             self.curr_r = position[0]
@@ -55,6 +51,7 @@ class Game:
             return f"{'white' if self.side > 0 else 'black'} {pieces[self.ptype]} at {tuple(map(int, self.position))}"
 
     def __init__(self, board=default_board, seed=17):
+
         self.board = board
         self.turn = 'white'
         self.game_running = True
@@ -66,9 +63,8 @@ class Game:
 
         random.seed(seed)
 
-        # needs to hold to, from, and (eventually) score
-        # structured as:
-        # (from row, from col, to row, to col, piece type, score)
+        # moves structured as:
+        # (from row, from col, to row, to col, signed piece type, score)
         self.white_moves = np.zeros(shape=(0, 6))
         self.black_moves = np.zeros(shape=(0, 6))
 
@@ -79,6 +75,7 @@ class Game:
         while self.game_running:
             self.execute_move()
 
+    # movement helper funcs
     def move_on_opponent(self, piece: Piece, dest):
         return piece.side * self.board[dest] < 0
 
@@ -88,6 +85,7 @@ class Game:
     def move_in_bounds(self, dest):
         return (0 <= dest[0] <= 7) and (0 <= dest[1] <= 7)
 
+    # function that routes whatever piece is passed in to its proper handler(s)
     def get_possible_moves(self, piece: Piece):
         # pawn
         if piece.ptype == 1 or piece.ptype == 7:
@@ -106,23 +104,31 @@ class Game:
             self.get_king_moves(piece)
 
     def poll_whites(self):
+        # clears all moves
         self.white_moves = np.zeros(shape=(0, 6))
+        # find all whites
         w_pieces = np.argwhere(self.board > 0)
         for p in w_pieces:
+            # creates a new piece object to be passed into the handlers
             curr_piece = self.Piece(self.board, tuple(p), self.untouched)
             self.get_possible_moves(curr_piece)
-        self.white_moves = self.white_moves[np.argsort(self.white_moves[:, -1])][::-1]
 
     def poll_blacks(self):
+        # clear moves
         self.black_moves = np.zeros(shape=(0, 6))
+        # find blacks
         b_pieces = np.argwhere(self.board < 0)
         for p in b_pieces:
+            # new piece object
             curr_piece = self.Piece(self.board, tuple(p), self.untouched)
             self.get_possible_moves(curr_piece)
-        self.black_moves = self.black_moves[np.argsort(self.black_moves[:, -1])][::-1]
 
+    # helper func used in handlers
     def add_move(self, piece: Piece, move):
+        # TODO: create move scoring system
         piece_score = random.random()
+
+        # stack moves onto their appropriate moves matrix
         if piece.side > 0:
             self.white_moves = np.vstack(
                 (np.array([[*piece.position, *move, piece.ptype * piece.side, piece_score]]), self.white_moves))
@@ -131,68 +137,77 @@ class Game:
                 (np.array([[*piece.position, *move, piece.ptype * piece.side, piece_score]]), self.black_moves))
 
     def black_in_check(self):
+        # re poll all white moves
         self.poll_whites()
+        # see if black king under attack
         for move in self.white_moves:
             if self.board[int(move[2]), int(move[3])] == -6:
                 return True
         return False
 
     def white_in_check(self):
+        # re poll blacks
         self.poll_blacks()
+        # see if white king is under attack
         for move in self.black_moves:
             if self.board[int(move[2]), int(move[3])] == 6:
                 return True
         return False
 
     def execute_move(self):
-        # create a backup board
+        # create a backup board. We will restore the board to this if a potential move is invalid
         backup_board = self.board.copy()
 
-        # go thru the best moves
+        # store a copy of all the available moves
         if self.turn == 'white':
             available_moves = self.white_moves.copy()
         else:
             available_moves = self.black_moves.copy()
-        i = 0
+
+        # sort by score
+        available_moves = available_moves[np.argsort(available_moves[:, -1])][::-1]
+
+        # iter thru all sorted moves, starting at the top
+        # invalid moves will get popped until we find the highest valid move
+
         while available_moves.shape[0] > 0:
-            # print(f"{self.turn}'s turn")
-            # print(available_moves)
             move = available_moves[0]
             piece_type = abs(move[4])
-            piece_side = move[4]/abs(move[4])
+            piece_side = move[4] / abs(move[4])
             pos_from = (int(move[0]), int(move[1]))
             pos_to = (int(move[2]), int(move[3]))
 
             # can't eat kings
             if abs(self.board[pos_to]) == 6:
+                # pop!
                 available_moves = np.delete(available_moves, 0, axis=0)
-            # set up en passant
+            # pawns that just moved 2 spots are marked as '7' to enable en passant
             elif piece_type == 1 and abs(pos_from[0] - pos_to[0]) == 2:
                 self.board[pos_from] = 0
                 self.board[pos_to] = 7 * piece_side
-            elif piece_type == 7:
-                self.board[pos_from] = 0
-                self.board[pos_to] = 1 * piece_side
-            # execute en passant (left)
+            # execute en passant (left) if ptype is 8
             elif piece_type == 8:
                 self.board[pos_from] = 0
                 self.board[pos_to] = 1 * piece_side
-                # extract the victim's position
+                # get the victim's position
                 v_row = pos_from[0]
                 v_col = pos_from[1] - 1
+                # eat the victim
                 self.board[v_row, v_col] = 0
-            # execute en passant (right)
+            # execute en passant (right) if ptype is 9
             elif piece_type == 9:
                 self.board[pos_from] = 0
                 self.board[pos_to] = 1 * piece_side
-                # extract the victim's position
+                # get the victim's position
                 v_row = pos_from[0]
                 v_col = pos_from[1] + 1
+                # eat the victim
                 self.board[v_row, v_col] = 0
-            # promotion
+            # if the move was a promotion
             elif piece_type >= 10:
                 self.board[pos_from] = 0
                 self.board[pos_to] = (piece_type - 8) * piece_side
+
             # execute castle
             elif piece_type == 6 and abs(pos_from[1] - pos_to[1]) > 1:
                 # check for pre-move check
@@ -200,38 +215,64 @@ class Game:
                         or (piece_side < 0 and not self.black_in_check()):
                     self.board[pos_from] = 4 * piece_side
                     self.board[pos_to] = 6 * piece_side
-            # other
+            # regular move
             else:
                 self.board[pos_from] = 0
                 self.board[pos_to] = piece_type * piece_side
 
-            # check if the move puts yourself in check
-            if self.turn == 'white' and self.white_in_check():
-                # print('invalid white move')
+            # check if the move puts yourself in check or is a second attempt at en passant
+            if self.turn == 'white' and (self.white_in_check() or
+                                         (self.white_ep_used and (piece_type == 8 or piece_type == 9))):
+                # if move is indeed invalid, pop it and restore the board
                 available_moves = np.delete(available_moves, 0, axis=0)
                 self.board = backup_board.copy()
-            elif self.turn == 'black' and self.black_in_check():
-                # print('invalid black move')
+            elif self.turn == 'black' and (self.black_in_check() or
+                                           (self.black_ep_used and (piece_type == 8 or piece_type == 9))):
+                # invalid -> pop move and restore board
                 available_moves = np.delete(available_moves, 0, axis=0)
                 self.board = backup_board.copy()
+
+            # successful move!
             else:
-                # change the turn, stop looking for new moves
+                # mark the piece as touched
                 self.untouched[pos_from] = 0
+
+                # use up the single en passant available if applicable
+                if piece_type == 8 or piece_type == 9:
+                    if piece_side == -1:
+                        self.black_ep_used = True
+                    else:
+                        self.white_ep_used = True
+
+                # black successfully moved, flipping back to white
                 if self.turn == 'black':
                     self.turn = 'white'
+                    # if there's a 2-move white we've now forfeited our chance to en passant it
+                    # since we chose a different move
+                    self.board[self.board == 7] = 1
                 else:
                     self.turn = 'black'
+                    self.board[self.board == -7] = -1
                 break
 
-        # print(f"moving a {'white' if move[4] > 0 else 'black'} {pieces[abs(move[4])]} "
-        #       f"from {int(move[0]), int(move[1])} to {int(move[2]), int(move[3])}")
-        # print(self.board)
+        # printing new board & the move made
+        print(f"moving a {'white' if move[4] > 0 else 'black'} {pieces[abs(move[4])]} "
+              f"from {int(move[0]), int(move[1])} to {int(move[2]), int(move[3])}")
+        print(self.board)
 
+        # if only kings left, stalemate
         if np.isin(self.board, [0, -6, 6]).all():
             print("stalemate :/")
             self.game_running = False
+        # if all possible moves have been popped
         if available_moves.shape[0] == 0:
-            print(self.turn, " has been checkmated :(")
+            # stalemate if not in check
+            if self.turn == 'white' and not self.white_in_check() \
+                    or self.turn == 'black' and not self.black_in_check():
+                print("stalemate :/")
+            # checkmate!
+            else:
+                print(self.turn, " has been checkmated :(")
             self.game_running = False
 
     # movement funcs
@@ -239,8 +280,9 @@ class Game:
         # one-step move
         potential_move = (int(piece.curr_r - (piece.ptype * piece.side)), piece.curr_c)
         if self.move_in_bounds(potential_move) and self.board[potential_move] == 0:
-            # promotion
+            # if your one-step lands you on the last row
             if (potential_move[0] == 7 and piece.side == -1) or (potential_move[0] == 0 and piece.side == 1):
+                # 4 potential moves (knight, bishop, rook, queen)
                 for i in range(10, 14):
                     piece.ptype = i
                     self.add_move(piece, potential_move)
@@ -249,12 +291,16 @@ class Game:
 
         # two-step move
         potential_move = (piece.curr_r - int(2 * piece.ptype * piece.side), piece.curr_c)
-        if piece.untouched and self.move_in_bounds(potential_move) and self.board[potential_move] == 0:
+        spot_in_front = (piece.curr_r - int(piece.ptype * piece.side), piece.curr_c)
+        # untouched, in bounds, 2 spots in front must be empty
+        if piece.untouched and self.move_in_bounds(potential_move) \
+                and self.board[potential_move] == 0 and self.board[spot_in_front] == 0:
             self.add_move(piece, potential_move)
 
         # diagonal capture
         l_diag = (int(piece.curr_r - piece.side), piece.curr_c - 1)
         r_diag = (int(piece.curr_r - piece.side), piece.curr_c + 1)
+        # bounds check, opp check
         if self.move_in_bounds(l_diag) and self.move_on_opponent(piece, l_diag):
             self.add_move(piece, l_diag)
         if self.move_in_bounds(r_diag) and self.move_on_opponent(piece, r_diag):
@@ -284,7 +330,7 @@ class Game:
             dest_r += move_r * corners[i % 4][0]
             dest_c += move_c * corners[i % 4][1]
 
-            # check move legality
+            # check move legality (bounds & not on teammate)
             if (self.move_in_bounds((dest_r, dest_c))
                     and not self.move_on_teammate(piece, (dest_r, dest_c))):
                 self.add_move(piece, (dest_r, dest_c))
@@ -295,16 +341,20 @@ class Game:
             dest_r, dest_c = piece.curr_r, piece.curr_c
             dest_r += corners[i][0]
             dest_c += corners[i][1]
-            # check move legality
+            # check move legality (bounds, teammate)
             while (self.move_in_bounds((dest_r, dest_c))
                    and not self.move_on_teammate(piece, (dest_r, dest_c))):
                 # goes through if the dest spot is open or opponent
                 self.add_move(piece, (dest_r, dest_c))
 
+                # if reached an enemy, end the slant
+                if self.move_on_opponent(piece, (dest_r, dest_c)):
+                    break
+
                 dest_r += corners[i][0]
                 dest_c += corners[i][1]
 
-                # if the next move in the diag is blocked or past the edge, end the diagonal
+                # if the next move in the slant is out of bounds or blocked, end the slant
                 if not self.move_in_bounds((dest_r, dest_c)) or self.board[dest_r, dest_c] != 0:
                     break
 
@@ -314,18 +364,18 @@ class Game:
             dest_r += sides[i][0]
             dest_c += sides[i][1]
             while (self.move_in_bounds((dest_r, dest_c))
-                    and not self.move_on_teammate(piece, (dest_r, dest_c))):
+                   and not self.move_on_teammate(piece, (dest_r, dest_c))):
                 # goes through if the dest spot is open or opponent
                 self.add_move(piece, (dest_r, dest_c))
 
-                # if ate a piece, end
+                # if reached an enemy, end the straight
                 if self.move_on_opponent(piece, (dest_r, dest_c)):
                     break
 
                 dest_r += sides[i][0]
                 dest_c += sides[i][1]
 
-                # if the next move up is blocked by a piece, end this straight
+                # if the next move up is out of bounds or blocked by a piece, end this straight
                 if not self.move_in_bounds((dest_r, dest_c)) or self.board[dest_r, dest_c] != 0:
                     break
 
@@ -355,8 +405,9 @@ class Game:
         else:
             back_line = 7
 
+        # untouched king?
         if self.untouched[back_line, 4] != 0:
-            # check left
+            # untouched left rook/empty lane?
             if self.untouched[back_line, 0] != 0 and np.all(self.board[back_line, 1:4] == 0):
                 self.add_move(piece, (back_line, 0))
             # check right
