@@ -1,6 +1,6 @@
-import numpy as np
-from movement import *
 from game import *
+
+
 
 
 # test_board = np.zeros((8, 8))
@@ -15,12 +15,20 @@ from game import *
 # print(untouched)
 # print(test_board)
 
-game = Game()
-game.poll_whites()
-game.poll_blacks()
-print(game.board)
-print("white moves: \n", game.white_moves)
-print("black moves: \n", game.black_moves)
+
+# print(game.board)
+
+# game.execute_move()
+# print("white moves: \n", game.white_moves)
+# print("black moves: \n", game.black_moves)
+# print(game.board)
+for i in range(100):
+    game = Game(seed=i)
+    game.sim_game()
+    # print(game.board)
+# game.execute_move()
+# print(game.board)
+
 
 
 
