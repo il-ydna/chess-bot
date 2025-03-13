@@ -68,7 +68,7 @@ class Game:
         self.white_moves = np.zeros(shape=(0, 6))
         self.black_moves = np.zeros(shape=(0, 6))
 
-    @measure_runtime
+    # @measure_runtime
     def sim_game(self):
         self.poll_whites()
         self.poll_blacks()
@@ -167,6 +167,8 @@ class Game:
         # sort by score
         available_moves = available_moves[np.argsort(available_moves[:, -1])][::-1]
 
+        # print(available_moves)
+
         # iter thru all sorted moves, starting at the top
         # invalid moves will get popped until we find the highest valid move
 
@@ -256,23 +258,26 @@ class Game:
                 break
 
         # printing new board & the move made
-        print(f"moving a {'white' if move[4] > 0 else 'black'} {pieces[abs(move[4])]} "
-              f"from {int(move[0]), int(move[1])} to {int(move[2]), int(move[3])}")
-        print(self.board)
+        # print(f"moving a {'white' if move[4] > 0 else 'black'} {pieces[abs(move[4])]} "
+        #       f"from {int(move[0]), int(move[1])} to {int(move[2]), int(move[3])}")
+        # print(self.board)
 
         # if only kings left, stalemate
         if np.isin(self.board, [0, -6, 6]).all():
-            print("stalemate :/")
+            # print("stalemate :/")
+            pass
             self.game_running = False
         # if all possible moves have been popped
         if available_moves.shape[0] == 0:
             # stalemate if not in check
             if self.turn == 'white' and not self.white_in_check() \
                     or self.turn == 'black' and not self.black_in_check():
-                print("stalemate :/")
+                # print("stalemate :/")
+                pass
             # checkmate!
             else:
-                print(self.turn, " has been checkmated :(")
+                pass
+                # print(self.turn, " has been checkmated :(")
             self.game_running = False
 
     # movement funcs
